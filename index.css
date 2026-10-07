@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>デジタルポイントカード</title>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --secondary-color: #818cf8;
+            --background-color: #f3f4f6;
+            --card-color: #ffffff;
+            --text-color: #1f2937;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            background-color: var(--card-color);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+        }
+
+        /* 名前入力エリア */
+        .name-section {
+            margin-bottom: 25px;
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-color);
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background-color: var(--secondary-color);
+        }
+
+        /* ポイントカードの見た目 */
+        .point-card {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(79, 70, 229, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-user-name {
+            font-size: 18px;
+            text-align: left;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .point-display {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .point-unit {
+            font-size: 20px;
+            margin-left: 5px;
+        }
+
+        /* メッセージ表示 */
+        .message {
+            height: 20px;
+            font-size: 14px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        .success { color: #10b981; }
+        .error { color: #ef4444; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>✨ KEYWORD POINT CARD ✨</h1>
+
+    <!-- 名前登録セクション -->
+    <div class="name-section">
+        <div id="name-view">
+            <input type="text" id="user-name-input" placeholder="あなたのお名前を入力">
+            <button onclick="saveName()">名前を登録</button>
+        </div>
+        <div id="name-display-section" style="display: none;">
+            <span id="welcome-message"></span>
+            <button onclick="editName()" style="padding: 5px 10px; font-size: 12px; margin: 0 0 0 10px;">変更</button>
+        </div>
+    </div>
+
+    <!-- ポイントカード本体 -->
+    <div class="point-card">
+        <div class="card-user-name" id="card-name">ゲスト 様</div>
+        <div class="point-display"><span id="points">0</span><span class="point-unit">pt</span></div>
+        <div style="text-align: right; font-size: 12px; opacity: 0.8;">Keyword Reward Card</div>
+    </div>
+
+    <!-- メッセージ表示エリア -->
+    <div class="message" id="message-box"></div>
+
+    <!-- キーワード入力セクション -->
+    <div class="keyword-section">
+        <input type="text" id="keyword-input" placeholder="キーワードを入力してください">
+        <button onclick="checkKeyword()">キーワード送信</button>
+    </div>
+</div>
+
+<script>
+    // 正解キーワードと貰えるポイントの設定（ここを自由に変更してください！）
+    const KEYWORDS_LIST = {
+        "新巻鮭奈": 10,
+        "ごりら": 10,
+        "らっぱ": 10,
+        "ひみつ": 10
+    };
+
+    // 初期データの読み込み
+    let currentPoints = parseInt(localStorage.getItem('userPoints')) || 0;
+    let userName = localStorage.getItem('userName') || 'ゲスト';
+    // すでに使ったキーワードを記録して重複を防ぐ（お好みで外せます）
+    let usedKeywords = JSON.parse(localStorage.getItem('usedKeywords')) || [];
+
+    // 画面の初期表示
+    document.getElementById('points').innerText = currentPoints;
+    document.getElementById('card-name').innerText = userName + " 様";
+    if (localStorage.getItem('userName')) {
+        showRegisteredName(userName);
+    }
+
+    // 名前の保存
+    function saveName() {
+        const inputName = document.getElementById('user-name-input').value.trim();
+        if (inputName === "") {
+            showMessage("名前を入力してください。", "error");
+            return;
+        }
+        userName = inputName;
+        localStorage.setItem('userName', userName);
+        document.getElementById('card-name').innerText = userName + " 様";
+        showRegisteredName(userName);
+        showMessage("名前を保存しました！", "success");
+    }
+
+    function showRegisteredName(name) {
+        document.getElementById('name-view').style.display = 'none';
+        document.getElementById('name-display-section').style.display = 'block';
+        document.getElementById('welcome-message').innerText = `ようこそ、${name} さん`;
+    }
+
+    function editName() {
+        document.getElementById('name-view').style.display = 'block';
+        document.getElementById('name-display-section').style.display = 'none';
+        document.getElementById('user-name-input').value = userName;
+    }
+
+    // キーワード判定＆ポイント付与
+    function checkKeyword() {
+        const inputField = document.getElementById('keyword-input');
+        const inputWord = inputField.value.trim();
+
+        if (inputWord === "") {
+            showMessage("キーワードを入力してください。", "error");
+            return;
+        }
+
+        // キーワードが正しいかチェック
+        if (KEYWORDS_LIST.hasOwnProperty(inputWord)) {
+            
+            // 【重複チェック】すでに使ったキーワードの場合
+            if (usedKeywords.includes(inputWord)) {
+                showMessage("そのキーワードはすでに使用済みです！", "error");
+                inputField.value = "";
+                return;
+            }
+
+            // ポイント加算
+            const reward = KEYWORDS_LIST[inputWord];
+            currentPoints += reward;
+            usedKeywords.push(inputWord);
+
+            // データをブラウザに保存
+            localStorage.setItem('userPoints', currentPoints);
+            localStorage.setItem('usedKeywords', JSON.stringify(usedKeywords));
+
+            // 画面を更新
+            document.getElementById('points').innerText = currentPoints;
+            showMessage(`正解！ ${reward}ポイント獲得しました！🎉`, "success");
+        } else {
+            showMessage("キーワードが違います。もう一度試してね！", "error");
+        }
+
+        // 入力欄をクリア
+        inputField.value = "";
+    }
+
+    // メッセージ表示用
+    function showMessage(text, type) {
+        const msgBox = document.getElementById('message-box');
+        msgBox.innerText = text;
+        msgBox.className = "message " + type;
+    }
+</script>
+
+</body>
+</html>
